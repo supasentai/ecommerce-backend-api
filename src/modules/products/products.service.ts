@@ -3,6 +3,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Prisma } from '@prisma/client';
+import { ProductQueryDto } from './dto/product-query.dto';
 
 @Injectable()
 export class ProductsService {
@@ -19,15 +21,62 @@ export class ProductsService {
     });
   }
 
-  findAll() {
-    return this.prisma.product.findMany({
-      include: {
-        category: true,
+  async findAll(query: ProductQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ProductWhereInput = {
+      ...(query.search
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                slug: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          }
+        : {}),
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
+    };
+
+    const [items, totalItems] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.product.count({
+        where,
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    };
   }
 
   async findOne(id: string) {
