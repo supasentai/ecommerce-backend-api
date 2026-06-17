@@ -1,7 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { FindOrdersQueryDto } from './dto/find-orders-query.dto';
 
 @Injectable()
 export class OrdersService {
@@ -84,18 +89,62 @@ export class OrdersService {
     });
   }
 
-  findMyOrders(userId: string) {
+  async findMyOrders(userId: string, query: FindOrdersQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where: { userId },
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          items: true,
+        },
+      }),
+      this.prisma.order.count({
+        where: { userId },
+      }),
+    ]);
+
     return {
-      message: 'Find my orders endpoint',
-      userId,
+      data: orders,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
-  findMyOrder(userId: string, orderId: string) {
-    return {
-      message: 'Find my order endpoint',
-      userId,
-      orderId,
-    };
+  async findMyOrder(userId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
   }
 }

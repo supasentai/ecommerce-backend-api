@@ -1,8 +1,17 @@
-import { Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { Request } from 'express';
 
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrdersService } from './orders.service';
+import { FindOrdersQueryDto } from './dto/find-orders-query.dto';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -23,8 +32,11 @@ export class OrdersController {
   }
 
   @Get()
-  findMyOrders(@Req() request: AuthenticatedRequest) {
-    return this.ordersService.findMyOrders(request.user.id);
+  findMyOrders(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: FindOrdersQueryDto,
+  ) {
+    return this.ordersService.findMyOrders(request.user.id, query);
   }
 
   @Get(':id')
