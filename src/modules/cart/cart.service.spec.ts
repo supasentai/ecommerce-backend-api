@@ -206,6 +206,27 @@ describe('CartService', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
+  it("should reject updating another user's cart item", async () => {
+    mockPrismaService.cartItem.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateItem('user-id', 'other-user-cart-item-id', {
+        quantity: 1,
+      }),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(mockPrismaService.cartItem.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'other-user-cart-item-id',
+        userId: 'user-id',
+      },
+      include: {
+        product: true,
+      },
+    });
+    expect(mockPrismaService.cartItem.update).not.toHaveBeenCalled();
+  });
+
   it('should throw BadRequestException when updated quantity exceeds stock', async () => {
     mockPrismaService.cartItem.findFirst.mockResolvedValue({
       ...mockCartItem,

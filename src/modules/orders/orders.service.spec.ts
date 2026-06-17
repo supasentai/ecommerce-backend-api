@@ -20,6 +20,7 @@ describe('OrdersService', () => {
       findMany: jest.fn(),
       findFirst: jest.fn(),
       count: jest.fn(),
+      updateMany: jest.fn(),
     },
     orderItem: {
       createMany: jest.fn(),
@@ -225,6 +226,109 @@ describe('OrdersService', () => {
         },
       },
     });
+  });
+
+  it('should cancel pending order and restore stock', async () => {
+    const order = {
+      id: 'order-id',
+      userId: 'user-id',
+      status: OrderStatus.PENDING,
+      items: [
+        {
+          id: 'order-item-id',
+          orderId: 'order-id',
+          productId: 'product-id',
+          quantity: 2,
+          price: 100,
+        },
+      ],
+    };
+
+    const cancelledOrder = {
+      ...order,
+      status: OrderStatus.CANCELLED,
+      items: [
+        {
+          ...order.items[0],
+          product: mockProduct,
+        },
+      ],
+    };
+
+    mockPrismaService.order.findFirst.mockResolvedValue(order);
+    mockPrismaService.order.updateMany.mockResolvedValue({ count: 1 });
+    mockPrismaService.product.update.mockResolvedValue(mockProduct);
+    mockPrismaService.order.findUnique.mockResolvedValue(cancelledOrder);
+
+    await expect(
+      service.cancelMyOrder('user-id', 'order-id'),
+    ).resolves.toEqual(cancelledOrder);
+
+    expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'order-id',
+        userId: 'user-id',
+      },
+      include: {
+        items: true,
+      },
+    });
+    expect(mockPrismaService.order.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'order-id',
+        userId: 'user-id',
+        status: OrderStatus.PENDING,
+      },
+      data: {
+        status: OrderStatus.CANCELLED,
+      },
+    });
+    expect(mockPrismaService.product.update).toHaveBeenCalledWith({
+      where: {
+        id: 'product-id',
+      },
+      data: {
+        stock: {
+          increment: 2,
+        },
+      },
+    });
+    expect(mockPrismaService.order.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'order-id',
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  });
+
+  it('should throw BadRequestException when cancelling non-pending order', async () => {
+    mockPrismaService.order.findFirst.mockResolvedValue({
+      id: 'order-id',
+      userId: 'user-id',
+      status: OrderStatus.PAID,
+      items: [
+        {
+          id: 'order-item-id',
+          orderId: 'order-id',
+          productId: 'product-id',
+          quantity: 2,
+          price: 100,
+        },
+      ],
+    });
+
+    await expect(service.cancelMyOrder('user-id', 'order-id')).rejects.toThrow(
+      BadRequestException,
+    );
+
+    expect(mockPrismaService.order.updateMany).not.toHaveBeenCalled();
+    expect(mockPrismaService.product.update).not.toHaveBeenCalled();
   });
 
   it('should return paginated user orders', async () => {
