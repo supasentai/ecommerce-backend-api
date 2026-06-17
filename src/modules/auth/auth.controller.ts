@@ -14,6 +14,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -47,7 +48,18 @@ export class AuthController {
   }
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
-  updateProfile(@Req() req, @Body() dto: UpdateProfileDto) {
-    return this.authService.updateProfile(req.user.id, dto);
+  updateProfile(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(request.user.id, dto);
+  }
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  changePassword(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(request.user.id, dto);
   }
 }
