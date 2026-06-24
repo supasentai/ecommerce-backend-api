@@ -1,5 +1,7 @@
 # E-commerce API
 
+[![CI](https://github.com/supasentai/ecommerce-backend-api/actions/workflows/ci.yml/badge.svg)](https://github.com/supasentai/ecommerce-backend-api/actions/workflows/ci.yml)
+
 ## 1. Project Overview
 
 E-commerce API is a production-style backend project built with NestJS,
