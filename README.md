@@ -135,10 +135,16 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ecommerce_db?schema=
 JWT_SECRET=replace_with_a_strong_secret
 ```
 
-Start the local PostgreSQL database with Docker Compose:
+Start only the local PostgreSQL database for host-based development:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
+```
+
+If port `5432` is already in use, choose another host port:
+
+```bash
+POSTGRES_PORT=5433 docker compose up -d postgres
 ```
 
 Run database migrations and generate Prisma Client:
@@ -207,9 +213,16 @@ http://localhost:3000
 Useful local database commands:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 docker compose down
 docker compose down -v
+```
+
+The host PostgreSQL port defaults to `5432`. Override it with `POSTGRES_PORT`
+when needed:
+
+```bash
+POSTGRES_PORT=5433 docker compose up -d postgres
 ```
 
 The Docker Compose setup starts PostgreSQL 16 on port `5432` with:
@@ -229,6 +242,31 @@ Demo accounts:
 - Admin: `admin@example.com` / `Password123!`
 - User: `user1@example.com` / `Password123!`
 - User: `user2@example.com` / `Password123!`
+
+Run the full stack with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+If host port `3000` is already in use, choose another API port:
+
+```bash
+API_PORT=3001 docker compose up --build
+```
+
+The API container runs migrations before starting. In Docker Compose,
+`DATABASE_URL` points to the `postgres` service:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@postgres:5432/ecommerce_db?schema=public"
+```
+
+Swagger is available at:
+
+```text
+http://localhost:3000/api/docs
+```
 
 ## 10. Running Tests
 
