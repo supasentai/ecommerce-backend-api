@@ -1,6 +1,8 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderStatus, Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
@@ -9,6 +11,9 @@ import { ResponseTransformInterceptor } from '../src/common/interceptors/respons
 import { PrismaService } from '../src/prisma/prisma.service';
 
 const now = () => new Date();
+
+const digestRefreshToken = (refreshToken: string) =>
+  createHash('sha256').update(refreshToken).digest('hex');
 
 function pickFields<T extends Record<string, unknown>>(
   item: T,
@@ -99,6 +104,7 @@ function createInMemoryPrisma() {
           id: nextId('user'),
           email: data.email,
           password: data.password,
+          refreshTokenHash: data.refreshTokenHash ?? null,
           name: data.name ?? null,
           role: Role.USER,
           createdAt: now(),
@@ -106,6 +112,20 @@ function createInMemoryPrisma() {
         };
 
         state.users.push(user);
+
+        return pickFields(user, select);
+      }),
+      update: jest.fn(async ({ where, data, select }) => {
+        const user = state.users.find((stored) => stored.id === where.id);
+
+        if (!user) {
+          return null;
+        }
+
+        Object.assign(user, {
+          ...data,
+          updatedAt: now(),
+        });
 
         return pickFields(user, select);
       }),
@@ -355,7 +375,66 @@ describe('Order checkout flow (e2e)', () => {
       .expect(201);
 
     const accessToken = loginResponse.body.data.accessToken;
+    const initialRefreshToken = loginResponse.body.data.refreshToken;
     expect(accessToken).toBeDefined();
+    expect(initialRefreshToken).toBeDefined();
+    expect(prisma.state.users[0].refreshTokenHash).toBeDefined();
+    await expect(
+      bcrypt.compare(
+        digestRefreshToken(initialRefreshToken),
+        prisma.state.users[0].refreshTokenHash,
+      ),
+    ).resolves.toBe(true);
+
+    const refreshResponse = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({
+        refreshToken: initialRefreshToken,
+      })
+      .expect(201);
+
+    const rotatedRefreshToken = refreshResponse.body.data.refreshToken;
+    expect(refreshResponse.body.data.accessToken).toBeDefined();
+    expect(rotatedRefreshToken).toBeDefined();
+    expect(rotatedRefreshToken).not.toBe(initialRefreshToken);
+    await expect(
+      bcrypt.compare(
+        digestRefreshToken(initialRefreshToken),
+        prisma.state.users[0].refreshTokenHash,
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      bcrypt.compare(
+        digestRefreshToken(rotatedRefreshToken),
+        prisma.state.users[0].refreshTokenHash,
+      ),
+    ).resolves.toBe(true);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({
+        refreshToken: initialRefreshToken,
+      })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .send({
+        refreshToken: rotatedRefreshToken,
+      })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.data.message).toBe('Logged out successfully');
+      });
+
+    expect(prisma.state.users[0].refreshTokenHash).toBeNull();
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({
+        refreshToken: rotatedRefreshToken,
+      })
+      .expect(401);
 
     await request(app.getHttpServer())
       .post('/cart/items')

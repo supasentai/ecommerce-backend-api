@@ -9,6 +9,8 @@ describe('AuthController', () => {
   const mockAuthService = {
     register: jest.fn(),
     login: jest.fn(),
+    refresh: jest.fn(),
+    logout: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -31,5 +33,30 @@ describe('AuthController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('should call authService.refresh', () => {
+    const dto = { refreshToken: 'refresh-token' };
+    const result = {
+      accessToken: 'access-token',
+      refreshToken: 'new-refresh-token',
+    };
+
+    mockAuthService.refresh.mockReturnValue(result);
+
+    expect(controller.refresh(dto)).toEqual(result);
+    expect(mockAuthService.refresh).toHaveBeenCalledWith(dto);
+  });
+
+  it('should call authService.logout', () => {
+    const dto = { refreshToken: 'refresh-token' };
+    const result = {
+      message: 'Logged out successfully',
+    };
+
+    mockAuthService.logout.mockReturnValue(result);
+
+    expect(controller.logout(dto)).toEqual(result);
+    expect(mockAuthService.logout).toHaveBeenCalledWith(dto);
   });
 });
