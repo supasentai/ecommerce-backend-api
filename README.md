@@ -401,3 +401,28 @@ ecommerce-api/
 7. Open a specific order detail.
 8. Cancel a pending order when needed.
 9. Use an admin account to manage users, catalog records, and order status.
+
+## 15. Fullstack Roadmap
+
+This backend API is designed to be integrated with a dedicated Next.js frontend.
+
+Frontend repository: Coming soon
+
+Planned frontend stack:
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- TanStack Query
+- Zustand
+- React Hook Form + Zod
+
+Planned frontend features:
+
+- Product listing and product detail pages
+- Authentication pages
+- Shopping cart
+- Checkout flow
+- User order history
+- Admin dashboard for products, categories, orders, and users
