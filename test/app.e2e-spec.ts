@@ -2,7 +2,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderStatus, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+<<<<<<< HEAD
 import { createHash } from 'crypto';
+=======
+>>>>>>> fa563a20eb27a0e23718973766fc4daf0873f170
 import request from 'supertest';
 import { App } from 'supertest/types';
 
@@ -380,10 +383,14 @@ describe('Order checkout flow (e2e)', () => {
     expect(initialRefreshToken).toBeDefined();
     expect(prisma.state.users[0].refreshTokenHash).toBeDefined();
     await expect(
+<<<<<<< HEAD
       bcrypt.compare(
         digestRefreshToken(initialRefreshToken),
         prisma.state.users[0].refreshTokenHash,
       ),
+=======
+      bcrypt.compare(initialRefreshToken, prisma.state.users[0].refreshTokenHash),
+>>>>>>> fa563a20eb27a0e23718973766fc4daf0873f170
     ).resolves.toBe(true);
 
     const refreshResponse = await request(app.getHttpServer())
@@ -397,6 +404,7 @@ describe('Order checkout flow (e2e)', () => {
     expect(refreshResponse.body.data.accessToken).toBeDefined();
     expect(rotatedRefreshToken).toBeDefined();
     expect(rotatedRefreshToken).not.toBe(initialRefreshToken);
+<<<<<<< HEAD
     await expect(
       bcrypt.compare(
         digestRefreshToken(initialRefreshToken),
@@ -409,6 +417,8 @@ describe('Order checkout flow (e2e)', () => {
         prisma.state.users[0].refreshTokenHash,
       ),
     ).resolves.toBe(true);
+=======
+>>>>>>> fa563a20eb27a0e23718973766fc4daf0873f170
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
